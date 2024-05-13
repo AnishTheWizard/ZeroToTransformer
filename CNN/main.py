@@ -4,6 +4,9 @@ from torch.utils.data import DataLoader
 from torchvision import datasets
 from torchvision.transforms import ToTensor
 
+# LeNet5 from here:
+# https://pytorch.org/tutorials/beginner/introyt/modelsyt_tutorial.html
+
 device = (
   "cuda" if torch.cuda.is_available()
   else
@@ -12,7 +15,7 @@ device = (
   "cpu"
 )
 
-print(f"Using Device: {device} and {torch.cuda.is_available()}")
+print(f"Using Device: {device}")
 
 training_data = datasets.MNIST(
   root="FNN/data",
@@ -33,25 +36,42 @@ test_loader = DataLoader(testing_data)
 
 print(f"Training and Testing Data Loaded!")
 
-class NeuralNetwork(nn.Module):
+class CNN(nn.Module):
   def __init__(self, *args, **kwargs) -> None:
     super().__init__(*args, **kwargs)
-    self.flatten = nn.Flatten()
-    self.layers = nn.Sequential(
-      nn.Linear(28 * 28, 512, True), # Input Layer
-      nn.ReLU(False),
-      nn.Linear(512, 512, True),
-      nn.ReLU(False),
-      nn.Linear(512, 10, True)
+    self.conv_layers = nn.Sequential(
+      nn.Conv2d(1, 6, 5),
+      nn.ReLU(),
+      nn.MaxPool2d(2),
+      nn.Conv2d(6, 16, 3),
+      nn.ReLU(),
+      nn.MaxPool2d(2),
+      
     )
 
+    self.dense_layers = nn.Sequential(
+      nn.Linear(16*5*5, 120),
+      nn.ReLU(),
+      nn.Linear(120, 84),
+      nn.ReLU(),
+      nn.Linear(84, 10)
+    )
+
+  
   def forward(self, x):
-    x = self.flatten(x)
-    logits = self.layers.forward(x)
-    return logits
-
-
-model = NeuralNetwork()
+    x = self.conv_layers(x)
+    x = x.view(-1, self.num_flat_features(x))
+    x = self.dense_layers(x)
+    return x
+  
+  def num_flat_features(self, x):
+    size = x.size()[1:]
+    num_features = 1
+    for s in size:
+        num_features *= s
+    return num_features
+  
+model = CNN()
 
 learning_rate = 1e-3
 batch_size = 64
@@ -103,4 +123,4 @@ for i in range(epochs):
   test_loop(test_loader)
 
 
-torch.save(model, 'FNN/model.pth')
+torch.save(model, 'CNN/model.pth')
